@@ -10,17 +10,21 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <fstream>
+#include <sstream>
 
 class Person{
-public:
+private:
     std::string _name;
     int _birthyear;
     int _deathyear;
+public:
     Person(std::string name, int birthyear, int deathyear):
     _name(name), _birthyear(birthyear), _deathyear(deathyear)
     {}
     ~Person(){}
-    bool stillAlive(int year){
+
+    bool  stillAlive(const int year){
         if (year > this->_deathyear){
             return false;
         }
@@ -36,64 +40,108 @@ public:
          << " BY: "<< this->_birthyear
          << " DY: "<< this->_deathyear << std::endl;
     }
+    std::string getName() const {
+        return this->_name;
+    }
+    int getbd(){
+        return this->_birthyear;
+    }
+    int getdd(){
+        return this->_deathyear;
+    }
 };
 
 class DB{
+    std::vector<Person>* _pvectorPtr;
 public:
-    void showdatal(std::vector<Person> &pvector){
+    DB(std::vector<Person>* pvectorPtr):
+     _pvectorPtr(pvectorPtr){}
+    void showdata(){
         std::cout << "---------------Content -----------------" << std::endl;
-        for (auto it = pvector.begin(); it != pvector.end(); it++){
+        for (auto it = this->_pvectorPtr->begin(); it != this->_pvectorPtr->end(); it++){
             it->showdata();
         }
         std::cout << "---------------------- -----------------" << std::endl;
     }
-
-    void search(std::vector<Person> &pvector, std::string name, int year){
-        auto it = find_if(pvector.begin(), pvector.end(), [&name](const Person& p){return (p._name == name);});
-        if(it != pvector.end()){
+    
+    void search(const std::string name, const int year){
+        auto it = find_if(this->_pvectorPtr->begin(), this->_pvectorPtr->end(), [&name](const Person& p){return (p.getName() == name);});
+        if(it != this->_pvectorPtr->end()){
             std::cout << " \nPerson Found" << std::endl;
             it->showdata();
             if(it->stillAlive(year)){
                 std::cout << "This person is still alive" << std::endl;
             }
         }
+        std::cout << "---------------------- -----------------" << std::endl;
     }
 
-    void deletePerson(std::vector<Person> &pvector, std::string name){
-        auto it = find_if(pvector.begin(), pvector.end(), [&name](const Person& p){return (p._name == name);});
-        if(it != pvector.end()){
+    void deletePerson( const std::string name){
+        auto it = find_if(this->_pvectorPtr->begin(), this->_pvectorPtr->end(), [&name](const Person& p){return (p.getName() == name);});
+        if(it != this->_pvectorPtr->end()){
             std::cout << " \nPerson Found" << std::endl;
             it->showdata();
-            pvector.erase(it);
+            this->_pvectorPtr->erase(it);
             std::cout << "\nPerson deleted " << std::endl;
             return;
         }
         std::cout << "\nPerson not found " << std::endl;
+        std::cout << "---------------------- -----------------" << std::endl;
+    }
+    // void insert()
+    
+};
+
+class CSVParser{
+private:
+    std::vector<std::string> lines;
+
+    void getlinesParser(){
+        std::ifstream myfile; 
+        myfile.open(this->_filename.c_str());
+        std::string line = "";
+        getline(myfile, line);
+        while(getline(myfile, line)){
+            this->lines.push_back(line);
+            line = "";
+        }
+    }
+public:
+    std::string _filename;
+    std::vector<Person> *_ptrVPersons;
+
+    CSVParser(std::string filename, std::vector<Person> *ptrVPersons):
+         _filename(filename),
+         _ptrVPersons(ptrVPersons){}
+
+    void printLines(){
+        for(auto line : lines){
+            std::cout << line << std::endl;
+        }
+    }
+    
+    void getData(){
+        this->getlinesParser();
+        std::string name;
+        std::string byear;
+        std::string dyear;
+        for(auto line : lines){
+            std::stringstream inputString(line);
+            getline(inputString, name, ',');
+            getline(inputString, byear, ',');
+            getline(inputString, dyear);
+            this->_ptrVPersons->push_back(Person(name, std::stoi(byear), std::stoi(dyear)));
+        }
     }
 };
 
 
 
 int main(int argc, char* argv[]){
-    std::vector<Person> pvector;
-    pvector.emplace(pvector.begin(), Person("bill", 1991,2100));
-
-    Person p1 = Person("mauricio", 2000, 2100);
-    Person p2 = Person("ernesto", 3000, 3100);
-    Person p3 = Person("julian", 4000, 4100);
-
-    pvector.push_back(p1);
-    pvector.push_back(p2);
-    pvector.push_back(p3);
-
-    DB PersonDB = DB();
-
-    PersonDB.showdatal(pvector);
-    PersonDB.search(pvector, "mauricio", 2099);
-
-    PersonDB.deletePerson(pvector, "bill");
-    PersonDB.deletePerson(pvector, "bill");
-    PersonDB.showdatal(pvector);
-
+    std::vector<Person> persons;
+    CSVParser parser = CSVParser("myfile.csv", &persons);
+    parser.getData();
+    DB personDB = DB(&persons);
+    personDB.showdata();
     return 0;
 }
